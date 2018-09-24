@@ -1,0 +1,17 @@
+{
+  "name": "carnegie-exercise",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node multiget.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Corey Hickman",
+  "license": "ISC",
+  "dependencies": {
+    "prompts": "^1.1.1",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  }
+}
