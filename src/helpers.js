@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+
 /* Converts bytes into appropriate shorten size
  * @param {integer}: bytes
  * @returns {object}:
@@ -56,8 +59,28 @@ const getFileNameFromUrl = function(url) {
     return fileName;
 }
 
+/* Saves Buffer data to disk using a writeStream
+ * @param {Buffer}: data
+ * @param {string}: fileName
+ * @returns {void}
+ */
+const saveToFile = function(data, fileName) {
+    const dowloadDir = path.join(__dirname, '..', 'downloads');
+    const downloadPath = path.join(dowloadDir, fileName);
+
+    // Check if downloads directory exists, if not create it
+    if(!fs.existsSync(dowloadDir)) {
+        fs.mkdirSync(dowloadDir);
+    }
+
+    const wstream = fs.createWriteStream(downloadPath);
+    wstream.write(data); // Concat all data chunks, and write to file
+    wstream.close();
+}
+
 module.exports = {
     bytesToSize,
     sizeToBytes,
-    getFileNameFromUrl
+    getFileNameFromUrl,
+    saveToFile
 }

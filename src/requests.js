@@ -1,8 +1,6 @@
 const request = require('request');
-const fs = require('fs');
-const path = require('path');
 
-const {getFileNameFromUrl, sizeToBytes} = require('./helpers');
+const {sizeToBytes} = require('./helpers');
 
 const getHeaders = function(url) {
     return new Promise((resolve, reject) => {
@@ -81,34 +79,19 @@ function downloadSplitPieces(url, settings) {
     return Promise.all(pieces);
 }
 
-function saveFile(data, fileName) {
-    const dowloadDir = path.join(__dirname, '..', 'downloads');
-    const downloadPath = path.join(dowloadDir, fileName);
-
-    // Check if downloads directory exists, if not create it
-    if(!fs.existsSync(dowloadDir)) {
-        fs.mkdirSync(dowloadDir);
-    }
-
-    const wstream = fs.createWriteStream(downloadPath);
-    wstream.write(data); // Concat all data chunks, and write to file
-    wstream.close();
-}
-
 const downloadFile = async function({url, settings, headers}) {
-    const fileName = settings.name || getFileNameFromUrl(url);
     const fileHeaders = headers || await getHeaders(url, { method: 'HEAD' });
 
     // Check if file can be pulled by range, has a content length, and split exists and is a number
     if(fileHeaders['accept-ranges'] === 'bytes' && fileHeaders['content-length'] && settings.concurrent) {
         const downloadedPieces = await downloadSplitPieces(url, settings); // Returns array with the results of all requests
+        console.log('Download complete!');
+
         const finalDataArray = downloadedPieces
                                     .sort((a, b) => a.order - b.order) // Sort requests
                                     .map(val => val.data); // Create new array filled with the data only
-        const finalData = Buffer.concat(finalDataArray); // Merge chunks for final file
 
-        saveFile(finalData, fileName);
-        console.log('Complete!');
+        return Buffer.concat(finalDataArray); // Merge chunks for final file
     }
 }
 
