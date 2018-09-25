@@ -82,7 +82,7 @@ function downloadSplitPieces(url, settings) {
 }
 
 function saveFile(data, fileName) {
-    const dowloadDir = path.join(__dirname, 'downloads');
+    const dowloadDir = path.join(__dirname, '..', 'downloads');
     const downloadPath = path.join(dowloadDir, fileName);
 
     // Check if downloads directory exists, if not create it
