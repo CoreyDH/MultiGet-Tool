@@ -35,8 +35,8 @@ const getInputSettings = function(url, headers) {
                 name: 'size',
                 message: `The requested file is [${fileSize.value}${fileSize.multiplier}], number of bytes to download (e.g. 12.01MB)?`,
                 initial: headers['content-length'],
-                validate: val => {
-                    const bytes = sizeToBytes(val);
+                validate: s => {
+                    const bytes = sizeToBytes(s);
 
                     // Ensure amount entered is no greater than the file size
                     if(bytes > fileSize.bytes) {
@@ -54,7 +54,7 @@ const getInputSettings = function(url, headers) {
                 name: 'concurrent',
                 message: 'Number of concurrent downloads[max: 10]:',
                 initial: 4,
-                validate: val => val > 0 && val <= 10
+                validate: c => c <= 10
             });
         }
     }

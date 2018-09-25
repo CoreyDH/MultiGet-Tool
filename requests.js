@@ -1,32 +1,25 @@
 const request = require('request');
-const rp = require('request-promise');
 const fs = require('fs');
 const path = require('path');
 
 const {getFileNameFromUrl, sizeToBytes} = require('./helpers');
 
 const getHeaders = function(url) {
-    const options = {
-        method: 'HEAD',
-        uri: url
-    }
-
-    try {
-        return rp(options);
-    } catch(err) {
-        console.log(err)
-    }
-
-    // return getFile(url, { method: 'HEAD'});
+    return new Promise((resolve, reject) => {
+        request(url, { method: 'HEAD'}, (error, response, body) => {
+            resolve(response.headers);
+        });
+    });
 }
 
 function getFile(url, options) {
+    // Keep default options and overwrite keys if needed
     const requestOptions = Object.assign({}, {
         method: 'GET',
         uri: url
     }, options || {});
 
-    console.log('Sending request..', requestOptions);
+    console.log('Sending request..', url);
 
     return request(requestOptions);
 }
@@ -90,19 +83,24 @@ const downloadFile = async function({url, settings, headers}) {
     const fileName = settings.name || getFileNameFromUrl(url);
     const fileHeaders = headers || await getHeaders(url, { method: 'HEAD' });
 
-    const downloadPath = path.join(__dirname, 'downloads', fileName);
+    const dowloadDir = path.join(__dirname, 'downloads');
+    const downloadPath = path.join(dowloadDir, fileName);
+
+    // Check if downloads directory exists, if not create it
+    if(!fs.existsSync(dowloadDir)) {
+        fs.mkdirSync(dowloadDir);
+    }
+    
     const wstream = fs.createWriteStream(downloadPath);
 
     // Check if file can be pulled by range, has a content length, and split exists and is a number
     if(fileHeaders['accept-ranges'] === 'bytes' && fileHeaders['content-length'] && settings.concurrent) {
-        const downloadedPieces = await downloadSplitPieces(url, settings);
-        const sortedAllPieces = downloadedPieces.sort((a, b) => a.order - b.order);
-        const finalDataArray = sortedAllPieces.map(val => val.data);
+        const downloadedPieces = await downloadSplitPieces(url, settings); // Returns array with the results of all requests
+        const sortedAllPieces = downloadedPieces.sort((a, b) => a.order - b.order); // Sort requests
+        const finalDataArray = sortedAllPieces.map(val => val.data); // Create new array filled with the data only
 
-        wstream.write(Buffer.concat(finalDataArray));
+        wstream.write(Buffer.concat(finalDataArray)); // Concat all data chunks, and write to file
         console.log('Complete!');
-    } else {
-        getFile(url).pipe(wstream);
     }
 }
 
