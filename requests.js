@@ -51,14 +51,15 @@ function getFilePieces({url, order, range}) {
 }
 
 function downloadSplitPieces(url, settings) {
-    const bytesToDownload = sizeToBytes(settings.size);
-    const increment = Math.ceil(bytesToDownload / settings.concurrent);
+    const bytesToDownload = sizeToBytes(settings.size); // Total bytes to download 
+    const increment = Math.ceil(bytesToDownload / settings.concurrent); // Get file split size, round up for an easier check on last increment
 
-    let pieces = [];
+    let pieces = []; // Empty array to be filled with Promises
     let min = 0;
     let max = increment;
 
     for(let i = 0; i < settings.concurrent; i++) {
+        // If the max range is higher than the total bytes needed to be downloaded, set it to the bytes to download instead
         if(max > bytesToDownload) {
             max = bytesToDownload;
         }
@@ -72,6 +73,7 @@ function downloadSplitPieces(url, settings) {
         if(i === 0) {
             min++; // Offset min bytes by 1 after the first pass only so there is no overlap in bytes
         }
+
         min += increment;
         max += increment;
     }
@@ -79,10 +81,7 @@ function downloadSplitPieces(url, settings) {
     return Promise.all(pieces);
 }
 
-const downloadFile = async function({url, settings, headers}) {
-    const fileName = settings.name || getFileNameFromUrl(url);
-    const fileHeaders = headers || await getHeaders(url, { method: 'HEAD' });
-
+function saveFile(data, fileName) {
     const dowloadDir = path.join(__dirname, 'downloads');
     const downloadPath = path.join(dowloadDir, fileName);
 
@@ -90,16 +89,25 @@ const downloadFile = async function({url, settings, headers}) {
     if(!fs.existsSync(dowloadDir)) {
         fs.mkdirSync(dowloadDir);
     }
-    
+
     const wstream = fs.createWriteStream(downloadPath);
+    wstream.write(data); // Concat all data chunks, and write to file
+    wstream.close();
+}
+
+const downloadFile = async function({url, settings, headers}) {
+    const fileName = settings.name || getFileNameFromUrl(url);
+    const fileHeaders = headers || await getHeaders(url, { method: 'HEAD' });
 
     // Check if file can be pulled by range, has a content length, and split exists and is a number
     if(fileHeaders['accept-ranges'] === 'bytes' && fileHeaders['content-length'] && settings.concurrent) {
         const downloadedPieces = await downloadSplitPieces(url, settings); // Returns array with the results of all requests
-        const sortedAllPieces = downloadedPieces.sort((a, b) => a.order - b.order); // Sort requests
-        const finalDataArray = sortedAllPieces.map(val => val.data); // Create new array filled with the data only
+        const finalDataArray = downloadedPieces
+                                    .sort((a, b) => a.order - b.order) // Sort requests
+                                    .map(val => val.data); // Create new array filled with the data only
+        const finalData = Buffer.concat(finalDataArray); // Merge chunks for final file
 
-        wstream.write(Buffer.concat(finalDataArray)); // Concat all data chunks, and write to file
+        saveFile(finalData, fileName);
         console.log('Complete!');
     }
 }
